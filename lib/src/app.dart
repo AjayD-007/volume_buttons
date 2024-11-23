@@ -3,31 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'dart:async';
+import 'package:flutter/services.dart';
 
 class OverlayService {
+  static const platform = MethodChannel('overlay_channel');
+  static bool _isOverlayVisible = false;
+
+  static Future<void> initialize() async {
+    // Listen for notification actions
+    platform.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'notification_action':
+          final action = call.arguments as String;
+          if (action == 'show_overlay') {
+            await showOverlay();
+          } else if (action == 'hide_overlay') {
+            await hideOverlay();
+          }
+          break;
+      }
+    });
+  }
+
   static Future<void> showOverlay() async {
-    // Request overlay permission
     if (!await FlutterOverlayWindow.isPermissionGranted()) {
       await FlutterOverlayWindow.requestPermission();
       return;
     }
 
-    // Show overlay
     await FlutterOverlayWindow.showOverlay(
-        height: 100, // Initial height matching expanded state
-        width: 100, // Consistent width
-        alignment: OverlayAlignment.centerRight,
-        visibility: NotificationVisibility.visibilityPublic,
-        flag: OverlayFlag.defaultFlag,
-        overlayTitle: 'Floating Controls',
-        enableDrag: true,
-        startPosition: const OverlayPosition(0, 0),
-        overlayContent: "FloatingControlsOverlay",
-        positionGravity: PositionGravity.auto);
+      height: 100,
+      width: 100,
+      alignment: OverlayAlignment.centerRight,
+      visibility: NotificationVisibility.visibilityPublic,
+      flag: OverlayFlag.defaultFlag,
+      overlayTitle: 'Floating Controls',
+      enableDrag: true,
+      startPosition: const OverlayPosition(0, 0),
+      overlayContent: "FloatingControlsOverlay",
+      positionGravity: PositionGravity.auto,
+    );
+
+    _isOverlayVisible = true;
+    // Update notification state
+    await platform.invokeMethod('updateNotification', {'isVisible': true});
   }
 
   static Future<void> hideOverlay() async {
     await FlutterOverlayWindow.closeOverlay();
+    _isOverlayVisible = false;
+    // Update notification state
+    await platform.invokeMethod('updateNotification', {'isVisible': false});
   }
 }
 
@@ -108,7 +134,8 @@ class _FloatingControlsOverlayState extends State<FloatingControlsOverlay> {
                 children: [
                   _buildIconButton(Icons.volume_up, _volumeUp),
                   _buildIconButton(Icons.volume_down, _volumeDown),
-                  // _buildIconButton(Icons.screenshot, _takeScreenshot),
+                  _buildIconButton(
+                      Icons.close_sharp, () => OverlayService.hideOverlay()),
                   _buildIconButton(Icons.expand_more, toggle),
                 ],
               )

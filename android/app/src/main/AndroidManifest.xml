@@ -12,7 +12,12 @@
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true"
         >
-
+<receiver android:name=".NotificationActionReceiver" android:exported="false">
+    <intent-filter>
+        <action android:name="SHOW" />
+        <action android:name="HIDE" />
+    </intent-filter>
+</receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"
