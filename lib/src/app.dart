@@ -6,25 +6,6 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 class OverlayService {
-  static const platform = MethodChannel('overlay_channel');
-  static bool _isOverlayVisible = false;
-
-  static Future<void> initialize() async {
-    // Listen for notification actions
-    platform.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'notification_action':
-          final action = call.arguments as String;
-          if (action == 'show_overlay') {
-            await showOverlay();
-          } else if (action == 'hide_overlay') {
-            await hideOverlay();
-          }
-          break;
-      }
-    });
-  }
-
   static Future<void> showOverlay() async {
     if (!await FlutterOverlayWindow.isPermissionGranted()) {
       await FlutterOverlayWindow.requestPermission();
@@ -43,17 +24,10 @@ class OverlayService {
       overlayContent: "FloatingControlsOverlay",
       positionGravity: PositionGravity.auto,
     );
-
-    _isOverlayVisible = true;
-    // Update notification state
-    await platform.invokeMethod('updateNotification', {'isVisible': true});
   }
 
   static Future<void> hideOverlay() async {
     await FlutterOverlayWindow.closeOverlay();
-    _isOverlayVisible = false;
-    // Update notification state
-    await platform.invokeMethod('updateNotification', {'isVisible': false});
   }
 }
 
@@ -122,7 +96,7 @@ class _FloatingControlsOverlayState extends State<FloatingControlsOverlay> {
         duration: const Duration(milliseconds: 350), // Slightly longer duration
         curve: Curves.easeInOut, // Smoother animation curve
         width: 50,
-        height: _isExpanded ? 200 : 50,
+        height: _isExpanded ? 250 : 50,
         decoration: BoxDecoration(
           color: Colors
               .black54, // Slightly darker background for better visibility
@@ -134,8 +108,12 @@ class _FloatingControlsOverlayState extends State<FloatingControlsOverlay> {
                 children: [
                   _buildIconButton(Icons.volume_up, _volumeUp),
                   _buildIconButton(Icons.volume_down, _volumeDown),
-                  _buildIconButton(
-                      Icons.close_sharp, () => OverlayService.hideOverlay()),
+                  _buildIconButton(Icons.close_sharp, () {
+                    OverlayService.hideOverlay();
+                    setState(() {
+                      _isExpanded = !_isExpanded;
+                    });
+                  }),
                   _buildIconButton(Icons.expand_more, toggle),
                 ],
               )
@@ -162,7 +140,7 @@ class _FloatingControlsOverlayState extends State<FloatingControlsOverlay> {
   Future<void> toggle() async {
     await FlutterOverlayWindow.resizeOverlay(
         50, // Consistent width
-        _isExpanded ? 50 : 200, // Dynamic height
+        _isExpanded ? 50 : 250, // Dynamic height
         !_isExpanded ? false : true // Smooth resizing
         );
     setState(() {
